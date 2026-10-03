@@ -1,0 +1,8 @@
+{$DOMAIN} {
+	encode gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy app:8000
+}
+
+# Сайты других сервисов на этом VPS (один Caddy на порты 80/443). См. sites/README.md
+import sites/*.caddy

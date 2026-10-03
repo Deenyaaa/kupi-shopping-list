@@ -1,0 +1,8 @@
+.git
+.venv
+__pycache__
+*.db
+.env
+.claude-token
+.claude-url
+tests

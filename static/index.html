@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Покупки</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Покупки</h1>
+    <div class="actions">
+      <span class="muted" id="me"></span>
+      <a class="link" id="admin-link" href="/admin" hidden>Админка</a>
+      <button class="link" id="pw-toggle" type="button">Пароль</button>
+      <button class="link" id="logout" type="button">Выйти</button>
+    </div>
+  </header>
+  <form class="card stack" id="pw" hidden>
+    <strong>Сменить пароль</strong>
+    <input type="password" name="current" placeholder="Текущий пароль" autocomplete="current-password" required>
+    <input type="password" name="new" placeholder="Новый пароль, от 8 символов" autocomplete="new-password" minlength="8" required>
+    <input type="password" name="repeat" placeholder="Новый пароль ещё раз" autocomplete="new-password" minlength="8" required>
+    <div class="row">
+      <button class="btn" type="submit">Сохранить</button>
+      <button class="link" type="button" id="pw-cancel">Отмена</button>
+    </div>
+    <p class="muted" id="pw-msg" role="status"></p>
+  </form>
+  <form class="add" id="add">
+    <input type="text" name="product" placeholder="Что купить?" maxlength="200" autocomplete="off" required>
+    <button class="btn" type="submit">Добавить</button>
+  </form>
+  <p class="error" id="error" role="alert"></p>
+  <ul id="todo"></ul>
+  <p class="empty" id="empty" hidden>Список пуст</p>
+  <div class="section" id="bought-head" hidden>
+    <span class="muted">Куплено</span>
+    <button class="link" id="clear">Очистить купленное</button>
+  </div>
+  <ul id="bought"></ul>
+</main>
+</body>
+</html>

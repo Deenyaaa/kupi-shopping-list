@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Админка · Покупки</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/admin.js" defer></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Админка</h1>
+    <a class="link" href="/">← К списку</a>
+  </header>
+  <p class="error" id="error" role="alert"></p>
+
+  <div class="section"><span class="muted">Пользователи</span></div>
+  <ul id="users"></ul>
+  <form class="card stack" id="add-user">
+    <strong>Новый пользователь</strong>
+    <input type="text" name="username" placeholder="Логин" autocomplete="off" autocapitalize="off" maxlength="64" required>
+    <input type="password" name="password" placeholder="Пароль, от 8 символов" autocomplete="new-password" minlength="8" required>
+    <label class="check"><input type="checkbox" name="is_admin"> администратор</label>
+    <button class="btn" type="submit">Создать</button>
+  </form>
+
+  <div class="section"><span class="muted">API-токены</span></div>
+  <p class="muted hint">Для интеграций (например, Claude). Токен работает только со списком покупок, админкой через него управлять нельзя.</p>
+  <ul id="tokens"></ul>
+  <div class="card stack" id="new-token" hidden>
+    <strong>Скопируйте токен — второй раз его не показать</strong>
+    <code id="new-token-value"></code>
+    <div class="row">
+      <button class="btn" type="button" id="copy-token">Скопировать</button>
+      <button class="link" type="button" id="hide-token">Скрыть</button>
+    </div>
+  </div>
+  <form class="card stack" id="add-token">
+    <strong>Новый токен</strong>
+    <select name="user_id" required></select>
+    <input type="text" name="name" placeholder="Для чего, например claude" maxlength="64" required>
+    <button class="btn" type="submit">Создать токен</button>
+  </form>
+</main>
+</body>
+</html>

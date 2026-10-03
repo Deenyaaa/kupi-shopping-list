@@ -1,0 +1,35 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - shopping_data:/data
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Укажи DOMAIN в файле .env (см. .env.example)}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro   # сайты соседних сервисов на этом же VPS (см. sites/README.md)
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - default
+      - web                           # общая сеть: через неё Caddy достаёт контейнеры других compose
+    depends_on:
+      - app
+
+networks:
+  web:
+    name: web   # другие compose подключаются к ней как external
+
+volumes:
+  shopping_data:   # база shopping.db
+  caddy_data:      # сертификаты Let's Encrypt
+  caddy_config:

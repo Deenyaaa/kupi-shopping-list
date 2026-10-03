@@ -1,3 +1,4 @@
+// t() и errorText() — из i18n.js
 const $ = (id) => document.getElementById(id);
 const errorBox = $('error');
 let me = null;
@@ -9,14 +10,10 @@ async function api(path, options = {}) {
   });
   if (res.status === 401) {
     location.href = '/login';
-    throw new Error('Нужно войти');
+    throw new Error(t('err.not_authenticated'));
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    if (typeof data.detail === 'string') throw new Error(data.detail);
-    if (Array.isArray(data.detail) && data.detail[0]?.msg) throw new Error('Проверьте поля: ' + data.detail[0].msg);
-    throw new Error('Ошибка сервера');
-  }
+  if (!res.ok) throw new Error(errorText(data));
   return data;
 }
 
@@ -39,43 +36,49 @@ function el(tag, props = {}, ...children) {
   return node;
 }
 
+function alertOk(text) {
+  const ok = el('p', {className: 'ok', role: 'status'}, text);
+  errorBox.after(ok);
+  setTimeout(() => ok.remove(), 5000);
+}
+
 // --- пользователи ---
 
 function renderUser(u) {
   const self = u.id === me.id;
-  const name = el('span', {className: 'name'}, u.username);
-  const info = el('span', {className: 'grow'}, name);
-  if (u.is_admin) info.append(el('span', {className: 'badge'}, 'админ'));
-  if (self) info.append(el('span', {className: 'who'}, 'это вы'));
+  const info = el('span', {className: 'grow'}, el('span', {className: 'name'}, u.username));
+  if (u.is_admin) info.append(el('span', {className: 'badge'}, t('admin.badge')));
+  if (self) info.append(el('span', {className: 'who'}, t('admin.you')));
 
   const pwForm = el('form', {className: 'inline', hidden: true});
-  const pwInput = el('input', {type: 'password', placeholder: 'Новый пароль', minLength: 8, required: true,
+  const pwInput = el('input', {type: 'password', placeholder: t('admin.newPw'), minLength: 8, required: true,
                                autocomplete: 'new-password'});
-  pwForm.append(pwInput, el('button', {className: 'btn', type: 'submit'}, 'Сохранить'));
+  pwForm.append(pwInput, el('button', {className: 'btn', type: 'submit'}, t('admin.save')));
   pwForm.addEventListener('submit', (e) => {
     e.preventDefault();
     run(async () => {
       await api(`/api/admin/users/${u.id}`, {method: 'PATCH', body: JSON.stringify({password: pwInput.value})});
       pwForm.hidden = true;
       pwInput.value = '';
-      alertOk(`Пароль ${u.username} изменён, все его устройства разлогинены`);
+      alertOk(t('admin.pwChanged', {name: u.username}));
     });
   });
 
   const actions = el('span', {className: 'row'});
-  const pwBtn = el('button', {className: 'link', type: 'button'}, 'Пароль');
+  const pwBtn = el('button', {className: 'link', type: 'button'}, t('admin.pw'));
   pwBtn.addEventListener('click', () => { pwForm.hidden = !pwForm.hidden; if (!pwForm.hidden) pwInput.focus(); });
   actions.append(pwBtn);
   if (!self) {
-    const adminBtn = el('button', {className: 'link', type: 'button'}, u.is_admin ? 'Снять админа' : 'Сделать админом');
+    const adminBtn = el('button', {className: 'link', type: 'button'},
+                        t(u.is_admin ? 'admin.revokeAdmin' : 'admin.makeAdmin'));
     adminBtn.addEventListener('click', () => run(async () => {
       await api(`/api/admin/users/${u.id}`, {method: 'PATCH', body: JSON.stringify({is_admin: !u.is_admin})});
       await loadUsers();
     }));
-    const delBtn = el('button', {className: 'del', type: 'button', title: 'Удалить'}, '×');
-    delBtn.setAttribute('aria-label', `Удалить пользователя ${u.username}`);
+    const delBtn = el('button', {className: 'del', type: 'button', title: t('admin.delete')}, '×');
+    delBtn.setAttribute('aria-label', t('admin.deleteAria', {name: u.username}));
     delBtn.addEventListener('click', () => {
-      if (!confirm(`Удалить пользователя ${u.username}? Его токены тоже удалятся.`)) return;
+      if (!confirm(t('admin.confirmDelete', {name: u.username}))) return;
       run(async () => {
         await api(`/api/admin/users/${u.id}`, {method: 'DELETE'});
         await Promise.all([loadUsers(), loadTokens()]);
@@ -85,12 +88,6 @@ function renderUser(u) {
   }
 
   return el('li', {className: 'wrap'}, info, actions, pwForm);
-}
-
-function alertOk(text) {
-  const ok = el('p', {className: 'ok', role: 'status'}, text);
-  errorBox.after(ok);
-  setTimeout(() => ok.remove(), 5000);
 }
 
 async function loadUsers() {
@@ -118,16 +115,16 @@ $('add-user').addEventListener('submit', (e) => {
 
 // --- токены ---
 
-function renderToken(t) {
-  const date = new Date(t.created_at * 1000).toLocaleDateString('ru-RU');
-  const info = el('span', {className: 'grow'}, el('span', {className: 'name'}, t.name),
-                  el('span', {className: 'who'}, `${t.username} · создан ${date}`));
-  const del = el('button', {className: 'del', type: 'button', title: 'Отозвать'}, '×');
-  del.setAttribute('aria-label', `Отозвать токен ${t.name}`);
+function renderToken(tok) {
+  const date = new Date(tok.created_at * 1000).toLocaleDateString(document.documentElement.lang);
+  const info = el('span', {className: 'grow'}, el('span', {className: 'name'}, tok.name),
+                  el('span', {className: 'who'}, t('admin.tokenInfo', {user: tok.username, date})));
+  const del = el('button', {className: 'del', type: 'button', title: t('admin.revoke')}, '×');
+  del.setAttribute('aria-label', t('admin.revokeAria', {name: tok.name}));
   del.addEventListener('click', () => {
-    if (!confirm(`Отозвать токен «${t.name}» (${t.username})? Интеграция с ним перестанет работать.`)) return;
+    if (!confirm(t('admin.confirmRevoke', {name: tok.name, user: tok.username}))) return;
     run(async () => {
-      await api(`/api/admin/tokens/${t.id}`, {method: 'DELETE'});
+      await api(`/api/admin/tokens/${tok.id}`, {method: 'DELETE'});
       await loadTokens();
     });
   });
@@ -143,12 +140,12 @@ $('add-token').addEventListener('submit', (e) => {
   e.preventDefault();
   const f = e.target.elements;
   run(async () => {
-    const t = await api('/api/admin/tokens', {method: 'POST', body: JSON.stringify({
+    const tok = await api('/api/admin/tokens', {method: 'POST', body: JSON.stringify({
       user_id: Number(f.namedItem('user_id').value),
       name: f.namedItem('name').value,
     })});
     f.namedItem('name').value = '';
-    $('new-token-value').textContent = t.token;
+    $('new-token-value').textContent = tok.token;
     $('new-token').hidden = false;
     await loadTokens();
   });
@@ -156,13 +153,13 @@ $('add-token').addEventListener('submit', (e) => {
 
 $('copy-token').addEventListener('click', () => run(async () => {
   await navigator.clipboard.writeText($('new-token-value').textContent);
-  $('copy-token').textContent = 'Скопировано';
+  $('copy-token').textContent = t('admin.copied');
 }));
 
 $('hide-token').addEventListener('click', () => {
   $('new-token-value').textContent = '';
   $('new-token').hidden = true;
-  $('copy-token').textContent = 'Скопировать';
+  $('copy-token').textContent = t('admin.copy');
 });
 
 run(async () => {

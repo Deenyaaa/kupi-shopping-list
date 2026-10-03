@@ -3,7 +3,7 @@ const error = document.getElementById('error');
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const button = form.querySelector('button');
+  const button = form.querySelector('button[type=submit]');
   button.disabled = true;
   error.textContent = '';
   try {
@@ -16,10 +16,10 @@ form.addEventListener('submit', async (e) => {
       location.href = '/';
       return;
     }
-    const data = await res.json().catch(() => ({}));
-    error.textContent = typeof data.detail === 'string' ? data.detail : 'Не удалось войти';
+    const data = await res.json().catch(() => null);
+    error.textContent = data ? errorText(data) : t('login.failed');
   } catch {
-    error.textContent = 'Нет связи с сервером';
+    error.textContent = t('login.offline');
   } finally {
     button.disabled = false;
   }

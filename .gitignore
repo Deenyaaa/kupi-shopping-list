@@ -1,7 +1,15 @@
+# Python
 .venv/
 __pycache__/
+
+# Данные и секреты — только на сервере / локально
 *.db
 .env
 .claude-token
 .claude-url
-sites/*.caddy
+
+# Локальные настройки Claude Code
+.claude/
+
+# Сайты соседних сервисов: домены у каждого сервера свои (sites/README.md)
+sites/*.caddy*

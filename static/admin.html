@@ -1,46 +1,50 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-title="admin.title">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Админка · Покупки</title>
+<title>Админка · Купи</title>
 <link rel="stylesheet" href="/static/style.css">
+<script src="/static/i18n.js" defer></script>
 <script src="/static/admin.js" defer></script>
 </head>
 <body>
 <main>
   <header>
-    <h1>Админка</h1>
-    <a class="link" href="/">← К списку</a>
+    <h1 data-i18n="admin.heading">Админка</h1>
+    <div class="actions">
+      <button class="link" id="lang" type="button">EN</button>
+      <a class="link" href="/" data-i18n="admin.back">← К списку</a>
+    </div>
   </header>
   <p class="error" id="error" role="alert"></p>
 
-  <div class="section"><span class="muted">Пользователи</span></div>
+  <div class="section"><span class="muted" data-i18n="admin.users">Пользователи</span></div>
   <ul id="users"></ul>
   <form class="card stack" id="add-user">
-    <strong>Новый пользователь</strong>
-    <input type="text" name="username" placeholder="Логин" autocomplete="off" autocapitalize="off" maxlength="64" required>
-    <input type="password" name="password" placeholder="Пароль, от 8 символов" autocomplete="new-password" minlength="8" required>
-    <label class="check"><input type="checkbox" name="is_admin"> администратор</label>
-    <button class="btn" type="submit">Создать</button>
+    <strong data-i18n="admin.newUser">Новый пользователь</strong>
+    <input type="text" name="username" placeholder="Логин" data-i18n-ph="admin.username" autocomplete="off" autocapitalize="off" maxlength="64" required>
+    <input type="password" name="password" placeholder="Пароль, от 8 символов" data-i18n-ph="admin.password" autocomplete="new-password" minlength="8" required>
+    <label class="check"><input type="checkbox" name="is_admin"> <span data-i18n="admin.isAdmin">администратор</span></label>
+    <button class="btn" type="submit" data-i18n="admin.create">Создать</button>
   </form>
 
-  <div class="section"><span class="muted">API-токены</span></div>
-  <p class="muted hint">Для интеграций (например, Claude). Токен работает только со списком покупок, админкой через него управлять нельзя.</p>
+  <div class="section"><span class="muted" data-i18n="admin.tokens">API-токены</span></div>
+  <p class="muted hint" data-i18n="admin.tokensHint">Для интеграций (например, Claude). Токен работает только со списком покупок, админкой через него управлять нельзя.</p>
   <ul id="tokens"></ul>
   <div class="card stack" id="new-token" hidden>
-    <strong>Скопируйте токен — второй раз его не показать</strong>
+    <strong data-i18n="admin.tokenOnce">Скопируйте токен — второй раз его не показать</strong>
     <code id="new-token-value"></code>
     <div class="row">
-      <button class="btn" type="button" id="copy-token">Скопировать</button>
-      <button class="link" type="button" id="hide-token">Скрыть</button>
+      <button class="btn" type="button" id="copy-token" data-i18n="admin.copy">Скопировать</button>
+      <button class="link" type="button" id="hide-token" data-i18n="admin.hide">Скрыть</button>
     </div>
   </div>
   <form class="card stack" id="add-token">
-    <strong>Новый токен</strong>
+    <strong data-i18n="admin.newToken">Новый токен</strong>
     <select name="user_id" required></select>
-    <input type="text" name="name" placeholder="Для чего, например claude" maxlength="64" required>
-    <button class="btn" type="submit">Создать токен</button>
+    <input type="text" name="name" placeholder="Для чего, например claude" data-i18n-ph="admin.tokenName" maxlength="64" required>
+    <button class="btn" type="submit" data-i18n="admin.createToken">Создать токен</button>
   </form>
 </main>
 </body>

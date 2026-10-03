@@ -1,20 +1,22 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-title="login.title">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Вход · Покупки</title>
+<title>Вход · Купи</title>
 <link rel="stylesheet" href="/static/style.css">
+<script src="/static/i18n.js" defer></script>
 <script src="/static/login.js" defer></script>
 </head>
 <body>
 <main class="login">
-  <h1>Список покупок</h1>
-  <p class="muted">Войди, чтобы открыть список.</p>
+  <div class="topbar"><button class="link" id="lang" type="button">EN</button></div>
+  <h1 data-i18n="app.name">Купи</h1>
+  <p class="muted" data-i18n="login.subtitle">Общий список покупок. Войди, чтобы открыть.</p>
   <form id="login">
-    <input type="text" name="username" placeholder="Логин" autocomplete="username" autocapitalize="off" required>
-    <input type="password" name="password" placeholder="Пароль" autocomplete="current-password" required>
-    <button class="btn" type="submit">Войти</button>
+    <input type="text" name="username" placeholder="Логин" data-i18n-ph="login.username" autocomplete="username" autocapitalize="off" required>
+    <input type="password" name="password" placeholder="Пароль" data-i18n-ph="login.password" autocomplete="current-password" required>
+    <button class="btn" type="submit" data-i18n="login.submit">Войти</button>
     <p class="error" id="error" role="alert"></p>
   </form>
 </main>

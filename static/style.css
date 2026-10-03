@@ -73,6 +73,7 @@ li .del:hover { color: var(--danger); }
 .empty { text-align: center; color: var(--muted); padding: 32px 0; }
 .error { color: var(--danger); min-height: 1.4em; margin: 8px 0 0; }
 .login { max-width: 360px; margin-top: 12vh; }
+.topbar { display: flex; justify-content: flex-end; }
 .login form { display: grid; gap: 10px; }
 
 /* смена пароля и админка */

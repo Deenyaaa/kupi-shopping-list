@@ -8,18 +8,11 @@ async function api(path, options = {}) {
   });
   if (res.status === 401) {
     location.href = '/login';
-    throw new Error('Нужно войти');
+    throw new Error(t('err.not_authenticated'));
   }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(errorText(data));
+  if (!res.ok) throw new Error(errorText(data));  // errorText и t — из i18n.js
   return data;
-}
-
-// FastAPI отдаёт ошибку валидации списком: [{msg: "..."}]
-function errorText(data) {
-  if (typeof data.detail === 'string') return data.detail;
-  if (Array.isArray(data.detail) && data.detail[0]?.msg) return 'Проверьте поля: ' + data.detail[0].msg;
-  return 'Ошибка сервера';
 }
 
 function showError(e) {
@@ -55,8 +48,8 @@ function renderItem(item) {
   const del = document.createElement('button');
   del.className = 'del';
   del.textContent = '×';
-  del.title = 'Удалить';
-  del.setAttribute('aria-label', `Удалить «${item.name}»`);
+  del.title = t('list.delete');
+  del.setAttribute('aria-label', t('list.deleteAria', {name: item.name}));
   del.addEventListener('click', () => mutate(`/api/items/${item.id}`, {method: 'DELETE'}));
 
   li.append(label, del);
@@ -125,7 +118,7 @@ pwForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = pwForm.elements;
   if (f.namedItem('new').value !== f.namedItem('repeat').value) {
-    pwMsg.textContent = 'Новые пароли не совпадают';
+    pwMsg.textContent = t('pw.mismatch');
     return;
   }
   try {
@@ -134,7 +127,7 @@ pwForm.addEventListener('submit', async (e) => {
       body: JSON.stringify({current: f.namedItem('current').value, new: f.namedItem('new').value}),
     });
     pwForm.reset();
-    pwMsg.textContent = 'Пароль изменён. На других устройствах нужно войти заново.';
+    pwMsg.textContent = t('pw.done');
   } catch (err) {
     pwMsg.textContent = err.message;
   }

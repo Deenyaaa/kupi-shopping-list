@@ -85,6 +85,9 @@ try:
     alice = session()
     s, h, b = req("POST", "/api/login", {"username": "alice", "password": "wrong"}, opener=alice)
     check("неверный пароль -> 401", s == 401, s)
+    err = json.loads(b)
+    check("ошибка с кодом для перевода, detail по-русски для cli.py",
+          err.get("code") == "bad_credentials" and err.get("detail") == "Неверный логин или пароль", b)
     s, h, b = req("POST", "/api/login", {"username": "Alice", "password": "test-pass-alice"}, opener=alice)
     cookie = h.get("set-cookie", "")
     check("вход (логин без учёта регистра)", s == 200, (s, b))
@@ -162,8 +165,9 @@ try:
     s, _, b = req("POST", "/api/admin/users", {"username": "carol", "password": "carol-pass-1"}, headers=A)
     carol = json.loads(b)
     check("создать пользователя", s == 201 and carol["username"] == "carol" and not carol["is_admin"], b)
-    check("дубль логина -> 409",
-          req("POST", "/api/admin/users", {"username": "CAROL", "password": "x" * 8}, headers=A)[0] == 409)
+    s, _, b = req("POST", "/api/admin/users", {"username": "CAROL", "password": "x" * 8}, headers=A)
+    check("дубль логина -> 409 с кодом и параметром",
+          s == 409 and json.loads(b)["code"] == "user_exists" and json.loads(b)["params"] == {"username": "CAROL"}, b)
     check("логин с пробелом -> 422",
           req("POST", "/api/admin/users", {"username": "a b", "password": "x" * 8}, headers=A)[0] == 422)
     check("короткий пароль -> 422",

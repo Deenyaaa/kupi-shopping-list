@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -17,8 +17,22 @@ SESSION_TTL = 30 * 24 * 3600
 # Secure-cookie уходит только по HTTPS (и на http://localhost). Выключать только для теста в локальной сети.
 SECURE_COOKIE = os.environ.get("SHOPPING_SECURE_COOKIE", "1") != "0"
 
+class ApiError(HTTPException):
+    """Ошибка с кодом: интерфейс переводит её по коду, а detail (по-русски) читают cli.py и логи."""
+
+    def __init__(self, status: int, code: str, message: str, **params):
+        super().__init__(status, message)
+        self.code = code
+        self.params = params
+
+
 # /docs и /openapi.json наружу не светим.
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@app.exception_handler(ApiError)
+async def api_error(request: Request, exc: ApiError):
+    return JSONResponse({"detail": exc.detail, "code": exc.code, "params": exc.params}, exc.status_code)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 limiter = auth.LoginLimiter()
 db.init()
@@ -63,20 +77,20 @@ def get_user(request: Request) -> dict | None:
 def current_user(request: Request) -> dict:
     user = get_user(request)
     if not user:
-        raise HTTPException(401, "Нужно войти")
+        raise ApiError(401, "not_authenticated", "Нужно войти")
     return user
 
 
 def session_user(user: dict = Depends(current_user)) -> dict:
     # Пароль и админка — только из браузера: API-токен (например, у Claude) даёт доступ лишь к списку.
     if user["via"] != "session":
-        raise HTTPException(403, "Только через вход в браузере")
+        raise ApiError(403, "session_only", "Только через вход в браузере")
     return user
 
 
 def current_admin(user: dict = Depends(session_user)) -> dict:
     if not user["is_admin"]:
-        raise HTTPException(403, "Нужны права администратора")
+        raise ApiError(403, "admin_only", "Нужны права администратора")
     return user
 
 
@@ -115,13 +129,13 @@ class Credentials(BaseModel):
 def login(creds: Credentials, request: Request, response: Response):
     ip = request.client.host if request.client else "?"
     if limiter.blocked(ip):
-        raise HTTPException(429, "Слишком много попыток, подождите 15 минут")
+        raise ApiError(429, "too_many_attempts", "Слишком много попыток, подождите 15 минут")
     with db.db() as c:
         user = c.execute("SELECT * FROM users WHERE username = ?", (creds.username.strip(),)).fetchone()
         ok = auth.verify_password(creds.password, user["password_hash"] if user else auth.DUMMY_HASH)
         if not (user and ok):
             limiter.fail(ip)
-            raise HTTPException(401, "Неверный логин или пароль")
+            raise ApiError(401, "bad_credentials", "Неверный логин или пароль")
         limiter.reset(ip)
         token = auth.new_token()
         now = int(time.time())
@@ -159,12 +173,12 @@ class PasswordChange(BaseModel):
 def change_password(pw: PasswordChange, request: Request, user: dict = Depends(session_user)):
     ip = request.client.host if request.client else "?"
     if limiter.blocked(ip):
-        raise HTTPException(429, "Слишком много попыток, подождите 15 минут")
+        raise ApiError(429, "too_many_attempts", "Слишком много попыток, подождите 15 минут")
     with db.db() as c:
         stored = c.execute("SELECT password_hash FROM users WHERE id = ?", (user["id"],)).fetchone()
         if not auth.verify_password(pw.current, stored["password_hash"]):
             limiter.fail(ip)  # подбор текущего пароля через эту форму тоже ограничиваем
-            raise HTTPException(400, "Текущий пароль неверный")
+            raise ApiError(400, "wrong_current_password", "Текущий пароль неверный")
         c.execute("UPDATE users SET password_hash = ? WHERE id = ?", (auth.hash_password(pw.new), user["id"]))
         # Выкидываем все остальные устройства, текущую сессию оставляем.
         c.execute(
@@ -193,7 +207,7 @@ class ItemUpdate(BaseModel):
 def fetch_item(c, item_id: int) -> dict:
     row = c.execute(f"{ITEM_SELECT} WHERE i.id = ?", (item_id,)).fetchone()
     if not row:
-        raise HTTPException(404, "Нет такой покупки")
+        raise ApiError(404, "item_not_found", "Нет такой покупки")
     return {**dict(row), "bought": bool(row["bought"])}
 
 
@@ -210,7 +224,7 @@ def list_items(user: dict = Depends(current_user)):
 def add_item(item: NewItem, response: Response, user: dict = Depends(current_user)):
     name = " ".join(item.name.split())
     if not name:
-        raise HTTPException(422, "Пустое название")
+        raise ApiError(422, "empty_name", "Пустое название")
     with db.db() as c:
         # Если такая покупка уже есть в списке и ещё не куплена, второй раз не добавляем.
         # Сравниваем в Python: lower() в SQLite не понимает кириллицу.
@@ -275,7 +289,7 @@ class NewToken(BaseModel):
 def fetch_user(c, user_id: int):
     row = c.execute("SELECT id, username, is_admin FROM users WHERE id = ?", (user_id,)).fetchone()
     if not row:
-        raise HTTPException(404, "Нет такого пользователя")
+        raise ApiError(404, "user_not_found", "Нет такого пользователя")
     return {"id": row["id"], "username": row["username"], "is_admin": bool(row["is_admin"])}
 
 
@@ -290,10 +304,10 @@ def admin_users(admin: dict = Depends(current_admin)):
 def admin_add_user(new: NewUser, admin: dict = Depends(current_admin)):
     username = new.username.strip()
     if not USERNAME_RE.fullmatch(username):
-        raise HTTPException(422, "Логин: буквы, цифры, точка, дефис или подчёркивание, без пробелов")
+        raise ApiError(422, "bad_username", "Логин: буквы, цифры, точка, дефис или подчёркивание, без пробелов")
     with db.db() as c:
         if c.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone():
-            raise HTTPException(409, f"Пользователь {username} уже есть")
+            raise ApiError(409, "user_exists", f"Пользователь {username} уже есть", username=username)
         cur = c.execute(
             "INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)",
             (username, auth.hash_password(new.password), int(new.is_admin)),
@@ -307,7 +321,7 @@ def admin_update_user(user_id: int, upd: UserUpdate, admin: dict = Depends(curre
         fetch_user(c, user_id)
         if upd.is_admin is False and user_id == admin["id"]:
             # себя не понижаем: так нельзя случайно остаться совсем без админа
-            raise HTTPException(400, "Нельзя снять права администратора с самого себя")
+            raise ApiError(400, "cannot_demote_self", "Нельзя снять права администратора с самого себя")
         if upd.is_admin is not None:
             c.execute("UPDATE users SET is_admin = ? WHERE id = ?", (int(upd.is_admin), user_id))
         if upd.password is not None:
@@ -319,7 +333,7 @@ def admin_update_user(user_id: int, upd: UserUpdate, admin: dict = Depends(curre
 @app.delete("/api/admin/users/{user_id}")
 def admin_delete_user(user_id: int, admin: dict = Depends(current_admin)):
     if user_id == admin["id"]:
-        raise HTTPException(400, "Нельзя удалить самого себя")
+        raise ApiError(400, "cannot_delete_self", "Нельзя удалить самого себя")
     with db.db() as c:
         fetch_user(c, user_id)
         c.execute("DELETE FROM users WHERE id = ?", (user_id,))  # сессии и токены удалятся каскадом
@@ -353,5 +367,5 @@ def admin_add_token(new: NewToken, admin: dict = Depends(current_admin)):
 def admin_revoke_token(token_id: int, admin: dict = Depends(current_admin)):
     with db.db() as c:
         if not c.execute("DELETE FROM api_tokens WHERE id = ?", (token_id,)).rowcount:
-            raise HTTPException(404, "Нет такого токена")
+            raise ApiError(404, "token_not_found", "Нет такого токена")
     return {"ok": True}
